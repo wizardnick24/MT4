@@ -1,0 +1,53 @@
+//+------------------------------------------------------------------+
+//|          Auto Cash Out When Account Doubles (Script)            |
+//|                    You asked for it, Nick.                       |
+//+------------------------------------------------------------------+
+#property strict
+
+double startBalance;
+
+// Close all open orders
+void CloseAllOrders()
+{
+   for(int i = OrdersTotal() - 1; i >= 0; i--)
+   {
+      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      {
+         int ticket = OrderTicket();
+         
+         if(OrderType() == OP_BUY)
+         {
+            OrderClose(ticket, OrderLots(), Bid,  slippage, clrRed);
+         }
+         else if(OrderType() == OP_SELL)
+         {
+            OrderClose(ticket, OrderLots(), Ask, slippage, clrRed);
+         }
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Script start                                                     |
+//+------------------------------------------------------------------+
+void OnStart()
+{
+   startBalance = AccountBalance();
+   double target = startBalance * 2.0;
+   double equity = AccountEquity();
+   
+   Print("Starting balance: ", startBalance);
+   Print("Target equity: ", target);
+   Print("Current equity: ", equity);
+
+   if(equity >= target)
+   {
+      Print("Target reached. Closing all positions.");
+      CloseAllOrders();
+      Print("All positions closed. Enjoy your victory lap.");
+   }
+   else
+   {
+      Print("Target NOT reached yet. No action taken.");
+   }
+}
