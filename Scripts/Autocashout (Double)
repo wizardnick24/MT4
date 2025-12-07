@@ -1,52 +1,70 @@
 //+------------------------------------------------------------------+
-//|          Auto Cash Out When Account Doubles (Script)            |
+//|        Auto Cash Out When Account Doubles (Zorak & Moltar)      |
 //+------------------------------------------------------------------+
 #property strict
 
-double startBalance;
+int    zorak  = 5;      // slippage (conservative value)
+double moltar = 0.0;    // starting balance tracker
 
-// Close all open orders
+//-------------------------------------------------------------------
+// Close all open orders with return checks
+//-------------------------------------------------------------------
 void CloseAllOrders()
 {
-   for(int i = OrdersTotal() - 1; i >= 0; i--)
+   for(int x = OrdersTotal() - 1; x >= 0; x--)
    {
-      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      if(OrderSelect(x, SELECT_BY_POS, MODE_TRADES))
       {
-         int ticket = OrderTicket();
-         
-         if(OrderType() == OP_BUY)
+         int    zorakTicket = OrderTicket();
+         double zorakLots   = OrderLots();
+         int    zorakType   = OrderType();
+         bool   moltarClose = false;
+
+         // Determine close price based on order type
+         if(zorakType == OP_BUY)
          {
-            OrderClose(ticket, OrderLots(), Bid,  slippage, clrRed);
+            moltarClose = OrderClose(zorakTicket, zorakLots, Bid, zorak, clrRed);
          }
-         else if(OrderType() == OP_SELL)
+         else if(zorakType == OP_SELL)
          {
-            OrderClose(ticket, OrderLots(), Ask, slippage, clrRed);
+            moltarClose = OrderClose(zorakTicket, zorakLots, Ask, zorak, clrRed);
+         }
+
+         // Report results
+         if(!moltarClose)
+         {
+            Print("Moltar failed to vaporize order #", zorakTicket,
+                  " | Error: ", GetLastError());
+         }
+         else
+         {
+            Print("Zorak successfully eliminated order #", zorakTicket);
          }
       }
    }
 }
 
-//+------------------------------------------------------------------+
-//| Script start                                                     |
-//+------------------------------------------------------------------+
+//-------------------------------------------------------------------
+// Script Start
+//-------------------------------------------------------------------
 void OnStart()
 {
-   startBalance = AccountBalance();
-   double target = startBalance * 2.0;
-   double equity = AccountEquity();
-   
-   Print("Starting balance: ", startBalance);
-   Print("Target equity: ", target);
-   Print("Current equity: ", equity);
+   moltar = AccountBalance();
+   double zorakTarget = moltar * 2.0;
+   double zorakEquity = AccountEquity();
 
-   if(equity >= target)
+   Print("Moltar balance: ", moltar);
+   Print("Zorak target:   ", zorakTarget);
+   Print("Current equity: ", zorakEquity);
+
+   if(zorakEquity >= zorakTarget)
    {
-      Print("Target reached. Closing all positions.");
+      Print("Zorak declares victory. Closing all orders...");
       CloseAllOrders();
-      Print("All positions closed. Enjoy your victory lap.");
+      Print("Moltar confirms closure sequence complete.");
    }
    else
    {
-      Print("Target NOT reached yet. No action taken.");
+      Print("Target not reached. Zorak remains unimpressed.");
    }
 }
