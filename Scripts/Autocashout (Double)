@@ -1,70 +1,66 @@
 //+------------------------------------------------------------------+
-//|        Auto Cash Out When Account Doubles (Zorak & Moltar)      |
+//|        Auto Cash-Out EA (Zorak & Moltar Continuous Version)     |
 //+------------------------------------------------------------------+
 #property strict
 
-int    zorak  = 5;      // slippage (conservative value)
-double moltar = 0.0;    // starting balance tracker
+double moltarStart = 0;     // starting balance
+int    zorakSlip   = 5;     // conservative slippage
 
 //-------------------------------------------------------------------
-// Close all open orders with return checks
+// Close all open orders with proper checking
 //-------------------------------------------------------------------
-void CloseAllOrders()
+void MoltarCloseAll()
 {
-   for(int x = OrdersTotal() - 1; x >= 0; x--)
+   for(int i = OrdersTotal() - 1; i >= 0; i--)
    {
-      if(OrderSelect(x, SELECT_BY_POS, MODE_TRADES))
+      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
       {
          int    zorakTicket = OrderTicket();
          double zorakLots   = OrderLots();
          int    zorakType   = OrderType();
-         bool   moltarClose = false;
+         bool   zorakDone   = false;
 
-         // Determine close price based on order type
          if(zorakType == OP_BUY)
-         {
-            moltarClose = OrderClose(zorakTicket, zorakLots, Bid, zorak, clrRed);
-         }
-         else if(zorakType == OP_SELL)
-         {
-            moltarClose = OrderClose(zorakTicket, zorakLots, Ask, zorak, clrRed);
-         }
+            zorakDone = OrderClose(zorakTicket, zorakLots, Bid, zorakSlip, clrRed);
 
-         // Report results
-         if(!moltarClose)
-         {
-            Print("Moltar failed to vaporize order #", zorakTicket,
+         if(zorakType == OP_SELL)
+            zorakDone = OrderClose(zorakTicket, zorakLots, Ask, zorakSlip, clrRed);
+
+         if(!zorakDone)
+            Print("Moltar FAILED to vaporize order #", zorakTicket,
                   " | Error: ", GetLastError());
-         }
          else
-         {
             Print("Zorak successfully eliminated order #", zorakTicket);
-         }
       }
    }
 }
 
 //-------------------------------------------------------------------
-// Script Start
+// Initialization — runs once when the EA is attached
 //-------------------------------------------------------------------
-void OnStart()
+int OnInit()
 {
-   moltar = AccountBalance();
-   double zorakTarget = moltar * 2.0;
+   moltarStart = AccountBalance();
+   Print("Moltar initial balance locked: ", moltarStart);
+   Print("Zorak will annihilate trades once equity reaches ",
+         moltarStart * 2.0);
+   return(INIT_SUCCEEDED);
+}
+
+//-------------------------------------------------------------------
+// Continuous checking — runs every tick
+//-------------------------------------------------------------------
+void OnTick()
+{
    double zorakEquity = AccountEquity();
+   double zorakTarget = moltarStart * 2.0;
 
-   Print("Moltar balance: ", moltar);
-   Print("Zorak target:   ", zorakTarget);
-   Print("Current equity: ", zorakEquity);
-
+   // Check if doubled
    if(zorakEquity >= zorakTarget)
    {
-      Print("Zorak declares victory. Closing all orders...");
-      CloseAllOrders();
-      Print("Moltar confirms closure sequence complete.");
-   }
-   else
-   {
-      Print("Target not reached. Zorak remains unimpressed.");
+      Print("Zorak threshold reached. Initiating Moltar shutdown.");
+      MoltarCloseAll();
+      Print("All trades processed. EA will stop.");
+      ExpertRemove();   // EA removes itself after completing the mission
    }
 }
